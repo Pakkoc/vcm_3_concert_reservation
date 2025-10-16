@@ -163,7 +163,7 @@ export const SeatMapSection = () => {
           <div className="mx-auto mb-2 w-full max-w-lg rounded-md bg-slate-800 py-2 text-center text-xs font-medium text-white">
             STAGE
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
             {zoneGradeBuckets.zones.map((zone) => (
               <div
                 key={zone.zone}
