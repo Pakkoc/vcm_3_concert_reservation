@@ -37,15 +37,7 @@ export const SeatMapSection = () => {
     ]);
   }, []);
 
-  // 등급별 목표 좌석 수(모든 구역 동일하게 보이도록 시각 정규화)
-  // 제공되지 않은 등급은 데이터 기반 최대값으로 대체
-  const gradeTargetCounts = useMemo(() => {
-    return new Map<string, number>([
-      ["SPECIAL", 48],
-      ["PREMIUM", 64],
-      // 필요 시 ADVANCED/REGULAR 값은 여기서 조정 가능
-    ]);
-  }, []);
+  // 등급별 목표 좌석 수 요구 제거: 구역 내에서 등급을 섹션으로 나누지 않고 색으로만 구분
 
   const gradePriceMap = useMemo(() => {
     if (!detailQuery.data) {
@@ -56,60 +48,30 @@ export const SeatMapSection = () => {
     );
   }, [detailQuery.data]);
 
-  // 구역별 등급 버킷으로 재구성하여, 등급별로 모든 구역의 좌석 개수가 동일하게 보이도록 정규화
-  const zoneGradeBuckets = useMemo(() => {
+  // 구역 → 행(rowLabel) → 좌석으로 그룹핑(등급 섹션 없이 색상만으로 구분)
+  const groupedByZone = useMemo(() => {
     const seats = seatMapQuery.data?.seats ?? [];
-
-    // zones: Map<zone, Map<gradeCode, SeatMapCell[]>>
     const zones = new Map<string, Map<string, SeatMapCell[]>>();
-    const gradeOrderSet = new Set<string>();
 
     seats.forEach((seat) => {
-      gradeOrderSet.add(seat.gradeCode);
       if (!zones.has(seat.zone)) zones.set(seat.zone, new Map());
-      const gradeMap = zones.get(seat.zone)!;
-      if (!gradeMap.has(seat.gradeCode)) gradeMap.set(seat.gradeCode, []);
-      gradeMap.get(seat.gradeCode)!.push(seat);
+      const rowMap = zones.get(seat.zone)!;
+      if (!rowMap.has(seat.rowLabel)) rowMap.set(seat.rowLabel, []);
+      rowMap.get(seat.rowLabel)!.push(seat);
     });
 
-    // 정렬/정규화 기준: 등급 사전순(SPECIAL → PREMIUM → ADVANCED → REGULAR과 다를 수 있어 order 보정)
-    const preferredOrder = ["SPECIAL", "PREMIUM", "ADVANCED", "REGULAR"] as const;
-    const gradeOrder = preferredOrder.filter((g) => gradeOrderSet.has(g)).concat(
-      Array.from(gradeOrderSet).filter((g) => !preferredOrder.includes(g as any)).sort(),
-    );
-
-    // 각 등급의 최대 좌석 수(모든 구역 중)
-    const maxCountByGrade = gradeOrder.reduce<Record<string, number>>((acc, g) => {
-      let max = 0;
-      for (const [, gradeMap] of zones) {
-        const count = (gradeMap.get(g)?.length ?? 0);
-        if (count > max) max = count;
-      }
-      acc[g] = max;
-      return acc;
-    }, {});
-
-    // 목표 좌석 수: 명시된 값 우선, 없으면 maxCount 사용
-    const targetCountByGrade = gradeOrder.reduce<Record<string, number>>((acc, g) => {
-      const specified = gradeTargetCounts.get(g);
-      acc[g] = specified && specified > 0 ? specified : (maxCountByGrade[g] ?? 0);
-      return acc;
-    }, {});
-
-    // 정규화된 구조 생성
-    const zoneList = Array.from(zones.keys()).sort();
-    const normalized = zoneList.map((zone) => {
-      const gradeMap = zones.get(zone)!;
-      const grades = gradeOrder.map((g) => {
-        const list = (gradeMap.get(g) ?? []).sort((a, b) => a.seatNumber - b.seatNumber);
-        const placeholders = Math.max(0, (targetCountByGrade[g] ?? list.length) - list.length);
-        return { gradeCode: g, seats: list, placeholders };
-      });
-      return { zone, grades };
-    });
-
-    return { gradeOrder, maxCountByGrade, targetCountByGrade, zones: normalized };
-  }, [seatMapQuery.data, gradeTargetCounts]);
+    return Array.from(zones.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map<ZoneGroup>(([zone, rows]) => ({
+        zone,
+        rows: Array.from(rows.entries())
+          .sort(([ra], [rb]) => ra.localeCompare(rb))
+          .map(([rowLabel, rowSeats]) => ({
+            rowLabel,
+            seats: rowSeats.sort((a, b) => a.seatNumber - b.seatNumber),
+          })),
+      }));
+  }, [seatMapQuery.data]);
 
   const selectedSeatIds = useMemo(
     () => new Set(selectedSeats.map((seat) => seat.seatId)),
@@ -175,37 +137,28 @@ export const SeatMapSection = () => {
         </div>
       )}
 
-      {!seatMapQuery.isLoading && !seatMapQuery.isError && zoneGradeBuckets.zones.length > 0 && (
+      {!seatMapQuery.isLoading && !seatMapQuery.isError && groupedByZone.length > 0 && (
         <div className="space-y-4">
           <div className="mx-auto mb-2 w-full max-w-lg rounded-md bg-slate-800 py-2 text-center text-xs font-medium text-white">
             STAGE
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
-            {zoneGradeBuckets.zones.map((zone) => (
+            {groupedByZone.map((zone) => (
               <div
                 key={zone.zone}
                 className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4"
               >
                 <header className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-slate-900">{zone.zone} 구역</h3>
-                  <span className="text-xs text-slate-500">{zone.grades.reduce((acc, g) => acc + g.seats.length, 0)}석</span>
+                  <span className="text-xs text-slate-500">{zone.rows.reduce((acc, r) => acc + r.seats.length, 0)}석</span>
                 </header>
 
-                {zone.grades.map((g) => {
-                  const columns = 4; // 요청: 모든 등급 그리드를 4열로 고정
-                  const placeholders = Array.from({ length: g.placeholders });
-
-                  return (
-                    <div key={`${zone.zone}-${g.gradeCode}`} className="rounded-lg border border-slate-200 bg-white p-3">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className={clsx("text-xs font-semibold", gradeStyle.get(g.gradeCode)?.selectedText ?? "text-slate-700")}>{g.gradeCode}</span>
-                        <span className="text-xs text-slate-500">{g.seats.length}석</span>
-                      </div>
-                      <div
-                        className="grid gap-1"
-                        style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-                      >
-                        {g.seats.map((seat) => {
+                <div className="space-y-2">
+                  {zone.rows.map((row) => (
+                    <div key={`${zone.zone}-${row.rowLabel}`} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3">
+                      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Row {row.rowLabel}</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {row.seats.map((seat) => {
                           const isSelected = selectedSeatIds.has(seat.seatId);
                           const status = seat.status;
                           const disabled = (!isSelected && status !== "available") || seatMapQuery.isFetching;
@@ -231,13 +184,10 @@ export const SeatMapSection = () => {
                             </button>
                           );
                         })}
-                        {placeholders.map((_, idx) => (
-                          <div key={`ph-${zone.zone}-${g.gradeCode}-${idx}`} className="h-8 w-full rounded-sm border border-transparent" />
-                        ))}
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             ))}
           </div>
