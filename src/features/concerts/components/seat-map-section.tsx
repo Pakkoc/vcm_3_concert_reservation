@@ -113,6 +113,25 @@ export const SeatMapSection = () => {
         </div>
       </header>
 
+      {detailQuery.data && (
+        <div className="rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
+          <div className="mb-2 font-semibold">등급별 가격 안내</div>
+          <ul className="flex flex-wrap gap-3">
+            {detailQuery.data.grades.map((g) => {
+              const style = gradeStyle.get(g.gradeCode) ?? { border: "border-slate-300" };
+              const price = g.price.toLocaleString();
+              return (
+                <li key={g.gradeId} className="inline-flex items-center gap-2">
+                  <span className={clsx("h-3 w-3 rounded-sm border", style.border)} />
+                  <span className="font-medium">{g.gradeCode}</span>
+                  <span className="text-slate-500">₩{price}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {selectionWarning && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
           <Info className="h-5 w-5 text-amber-500" />
@@ -194,13 +213,10 @@ export const SeatMapSection = () => {
 
           <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700">
             <div className="mb-2 font-semibold">좌석 안내</div>
-            <ul className="flex flex-wrap gap-3">
-              <li className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border border-fuchsia-400" /> SPECIAL</li>
-              <li className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border border-amber-400" /> PREMIUM</li>
-              <li className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border border-sky-400" /> ADVANCED</li>
-              <li className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border border-emerald-400" /> REGULAR</li>
-              <li className="ml-4 inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border border-slate-300 bg-slate-100" /> 예약됨</li>
-              <li className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border border-amber-200 bg-amber-50" /> 홀드중</li>
+            <ul className="flex flex-wrap gap-4">
+              <li className="inline-flex items-center gap-2"><span className="h-3 w-5 rounded-sm border border-slate-300 bg-white" /> 예약가능</li>
+              <li className="inline-flex items-center gap-2"><span className="h-3 w-5 rounded-sm border border-emerald-300 bg-emerald-100" /> 선택됨</li>
+              <li className="inline-flex items-center gap-2"><span className="h-3 w-5 rounded-sm border border-slate-200 bg-slate-100" /> 예약됨</li>
             </ul>
           </div>
         </div>
