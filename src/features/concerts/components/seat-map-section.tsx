@@ -121,10 +121,11 @@ export const SeatMapSection = () => {
               const style = gradeStyle.get(g.gradeCode) ?? { border: "border-slate-300" };
               const price = g.price.toLocaleString();
               return (
-                <li key={g.gradeId} className="inline-flex items-center gap-2">
+                <li key={g.gradeId} className="inline-flex items-center gap-3">
                   <span className={clsx("h-3 w-3 rounded-sm border", style.border)} />
                   <span className="font-medium">{g.gradeCode}</span>
                   <span className="text-slate-500">₩{price}</span>
+                  <span className="text-slate-500">· 남은좌석 {g.available.toLocaleString()} / {g.total.toLocaleString()}</span>
                 </li>
               );
             })}
