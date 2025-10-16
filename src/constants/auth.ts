@@ -26,4 +26,7 @@ export const isAuthPublicPath = (pathname: string) => {
     .otherwise(() => false);
 };
 
-export const shouldProtectPath = (pathname: string) => !isAuthPublicPath(pathname);
+/**
+ * 현재 플랫폼은 로그인 기능을 제공하지 않으므로 모든 경로를 공개로 취급합니다.
+ */
+export const shouldProtectPath = (_pathname: string) => false;

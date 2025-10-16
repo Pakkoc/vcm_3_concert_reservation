@@ -1,0 +1,1 @@
+export const DEFAULT_HOLD_TTL_SECONDS = 180;
