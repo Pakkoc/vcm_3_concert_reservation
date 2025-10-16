@@ -49,9 +49,11 @@ zone_rn AS (
   FROM seats s
   JOIN new_zone nz ON nz.id = s.id
 )
+-- per-row 좌석 수(8)를 기준으로 seat_number도 재산정하여 유니크 제약 충돌 방지
 UPDATE seats t
 SET zone = zr.zone,
-    row_label = 'R' || LPAD(CEIL(zr.rn_zone::numeric / 8)::text, 2, '0') || '-' || LEFT(zr.grade_code, 1)
+    row_label = 'R' || LPAD(CEIL(zr.rn_zone::numeric / 8)::text, 2, '0') || '-' || LEFT(zr.grade_code, 1),
+    seat_number = ((zr.rn_zone - 1) % 8) + 1
 FROM zone_rn zr
 WHERE t.id = zr.id;
 
