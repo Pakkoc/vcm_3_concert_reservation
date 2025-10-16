@@ -37,6 +37,16 @@ export const SeatMapSection = () => {
     ]);
   }, []);
 
+  // 등급별 목표 좌석 수(모든 구역 동일하게 보이도록 시각 정규화)
+  // 제공되지 않은 등급은 데이터 기반 최대값으로 대체
+  const gradeTargetCounts = useMemo(() => {
+    return new Map<string, number>([
+      ["SPECIAL", 48],
+      ["PREMIUM", 64],
+      // 필요 시 ADVANCED/REGULAR 값은 여기서 조정 가능
+    ]);
+  }, []);
+
   const gradePriceMap = useMemo(() => {
     if (!detailQuery.data) {
       return new Map<string, number>();
@@ -79,20 +89,27 @@ export const SeatMapSection = () => {
       return acc;
     }, {});
 
+    // 목표 좌석 수: 명시된 값 우선, 없으면 maxCount 사용
+    const targetCountByGrade = gradeOrder.reduce<Record<string, number>>((acc, g) => {
+      const specified = gradeTargetCounts.get(g);
+      acc[g] = specified && specified > 0 ? specified : (maxCountByGrade[g] ?? 0);
+      return acc;
+    }, {});
+
     // 정규화된 구조 생성
     const zoneList = Array.from(zones.keys()).sort();
     const normalized = zoneList.map((zone) => {
       const gradeMap = zones.get(zone)!;
       const grades = gradeOrder.map((g) => {
         const list = (gradeMap.get(g) ?? []).sort((a, b) => a.seatNumber - b.seatNumber);
-        const placeholders = Math.max(0, (maxCountByGrade[g] ?? 0) - list.length);
+        const placeholders = Math.max(0, (targetCountByGrade[g] ?? list.length) - list.length);
         return { gradeCode: g, seats: list, placeholders };
       });
       return { zone, grades };
     });
 
-    return { gradeOrder, maxCountByGrade, zones: normalized };
-  }, [seatMapQuery.data]);
+    return { gradeOrder, maxCountByGrade, targetCountByGrade, zones: normalized };
+  }, [seatMapQuery.data, gradeTargetCounts]);
 
   const selectedSeatIds = useMemo(
     () => new Set(selectedSeats.map((seat) => seat.seatId)),
@@ -175,8 +192,7 @@ export const SeatMapSection = () => {
                 </header>
 
                 {zone.grades.map((g) => {
-                  const maxCount = Math.max(1, zoneGradeBuckets.maxCountByGrade[g.gradeCode] ?? g.seats.length);
-                  const columns = Math.min(16, Math.max(6, Math.ceil(Math.sqrt(maxCount))));
+                  const columns = 4; // 요청: 모든 등급 그리드를 4열로 고정
                   const placeholders = Array.from({ length: g.placeholders });
 
                   return (
