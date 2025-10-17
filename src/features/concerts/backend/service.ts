@@ -53,17 +53,13 @@ type SeatSnapshot = {
 
 type ReservationSeatJoinRow = {
   seat_id: string;
-  seats?: {
-    concert_id: string;
-  } | null;
+  seats?: { concert_id: string } | { concert_id: string }[] | null;
 };
 
 type SeatHoldJoinRow = {
   seat_id: string;
   expires_at: string;
-  seats?: {
-    concert_id: string;
-  } | null;
+  seats?: { concert_id: string } | { concert_id: string }[] | null;
 };
 
 const sortColumnMap: Record<ConcertListQueryInput["sortBy"], string> = {
@@ -253,8 +249,17 @@ export const getConcertList = async (
     }
 
     ((reservationSeatRows ?? []) as ReservationSeatJoinRow[]).forEach((row) => {
-      const concertId =
-        row.seats?.concert_id ?? seatById.get(row.seat_id)?.concert_id;
+      // Supabase join 결과가 단일 객체 또는 배열로 올 수 있으므로 안전하게 처리
+      const seatsJoin = row.seats;
+      let concertId: string | undefined;
+
+      if (Array.isArray(seatsJoin)) {
+        concertId = seatsJoin[0]?.concert_id;
+      } else {
+        concertId = seatsJoin?.concert_id;
+      }
+
+      concertId = concertId ?? seatById.get(row.seat_id)?.concert_id;
 
       if (!concertId) {
         return;
