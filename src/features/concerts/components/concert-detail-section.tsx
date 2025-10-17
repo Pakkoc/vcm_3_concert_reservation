@@ -39,6 +39,16 @@ const formatDate = (iso: string) => {
 
 const formatPrice = (price: number) => currencyFormatter.format(price);
 
+const getGradeBarClass = (gradeCode: string) => {
+  const map: Record<string, string> = {
+    SPECIAL: "bg-fuchsia-500",
+    PREMIUM: "bg-amber-500",
+    ADVANCED: "bg-sky-500",
+    REGULAR: "bg-emerald-500",
+  };
+  return map[gradeCode] ?? "bg-slate-400";
+};
+
 export const ConcertDetailSection = ({ concertId }: { concertId: string }) => {
   const { detailQuery } = useConcertDetailContext();
 
@@ -155,7 +165,7 @@ const SeatGradesOverview = ({ grades }: { grades: SeatGradeSummary[] }) => {
               </p>
               <div className="h-2 rounded-full bg-slate-200">
                 <div
-                  className="h-full rounded-full bg-emerald-500"
+                  className={`h-full rounded-full ${getGradeBarClass(grade.gradeCode)}`}
                   style={{
                     width:
                       grade.total === 0
