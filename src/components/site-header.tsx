@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const SiteHeader = () => {
   return (
@@ -13,6 +14,11 @@ export const SiteHeader = () => {
         >
           MaFia Reservation
         </Link>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" className="h-9 rounded-lg border-slate-300 text-sm text-slate-700 hover:bg-slate-100">
+            <Link href="/lookup" aria-label="예약 조회 페이지로 이동">예약 조회</Link>
+          </Button>
+        </div>
       </div>
     </header>
   );
